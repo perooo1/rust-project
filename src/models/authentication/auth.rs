@@ -21,7 +21,7 @@ impl AuthUser {
         {
             Ok(mut users) => match users.pop() {
                 Some(user) => user,
-                None => todo!(), //todo
+                _ => todo!(), //todo
             },
             Err(e) => {
                 //println!("Authentication error: err getting user from db {:?}", e);
@@ -33,4 +33,7 @@ impl AuthUser {
 
         Ok((user,token))
     }
+
+ 
+
 }

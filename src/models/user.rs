@@ -1,8 +1,10 @@
 use crate::schema::users::{self};
 use chrono::NaiveDateTime;
-use diesel::pg::PgConnection;
 use diesel::prelude::*;
-use serde::{Serialize, Deserialize};
+use diesel::{delete, pg::PgConnection};
+use serde::{Deserialize, Serialize};
+
+use super::authentication::{self, jwt};
 
 #[derive(Queryable, PartialEq, Debug, Clone, Serialize)]
 pub struct User {
@@ -41,6 +43,32 @@ impl User {
             Err(e) => Err(e),
         }
     }
+
+    pub fn update_user(conn: &PgConnection, usr: Self) {
+        todo!()
+    }
+
+    pub fn delete_user(conn: &PgConnection, id: String) -> Result<usize, diesel::result::Error> {
+        let count_deleted = delete(users::table.filter(users::id.eq(id))).execute(conn);
+        count_deleted
+    }
+
+    pub fn generate_jwt(&self) -> String{                //mooozda ne valjda
+        jwt::generate(self)
+    }
+
+    pub fn create_user_from_jwt(claims: &authentication::jwt::Claims) -> Self {
+        User {
+            id: String::from(&claims.sub),
+            first_name: String::from(&claims.first_name),
+            last_name: String::from(&claims.last_name),
+            email: String::from(&claims.email),
+            pass: String::from(&claims.email),
+            is_admin: claims.is_admin,
+            created_at: claims.created_at,
+            updated_at: claims.updated_at,
+        }
+    }
 }
 
 impl NewUser {
@@ -52,6 +80,7 @@ impl NewUser {
         last_name: String,
         email: String,
         password: String,
+        is_admin: bool,
     ) -> Result<User, diesel::result::Error> {
         let hashed_password = match bcrypt::hash(&password, bcrypt::DEFAULT_COST) {
             //hashiranje izdvojit kasnije
@@ -67,40 +96,12 @@ impl NewUser {
             last_name,
             email,
             pass: String::to_string(&hashed_password),
-            is_admin: false,
+            is_admin,
         };
 
         diesel::insert_into(users::table)
             .values(&new_user)
             .get_result(connection)
         //.expect("Error adding new user")
-    }
-
-    pub fn create_admin(
-        connection: &PgConnection,
-        first_name: String,
-        last_name: String,
-        email: String,
-        password: String,
-    ) -> Result<User, diesel::result::Error> {
-        let hashed_password = match bcrypt::hash(&password, bcrypt::DEFAULT_COST) {
-            Ok(hashed) => hashed,
-            Err(e) => {
-                println!("Hashing password error: {:?}", e);
-                return Err(diesel::result::Error::__Nonexhaustive);
-            }
-        };
-        let new_admin = Self {
-            first_name,
-            last_name,
-            email,
-            pass: String::to_string(&hashed_password),
-            is_admin: true,
-        };
-
-        diesel::insert_into(users::table)
-            .values(&new_admin)
-            .get_result(connection)
-        //.expect("Error adding new admin")
     }
 }

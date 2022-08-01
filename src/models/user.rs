@@ -3,6 +3,7 @@ use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use diesel::{delete, pg::PgConnection};
 use serde::{Deserialize, Serialize};
+use validator::ValidationError;
 
 use super::authentication::{self, jwt};
 
@@ -53,7 +54,7 @@ impl User {
         count_deleted
     }
 
-    pub fn generate_jwt(&self) -> String{                //mooozda ne valjda
+    pub fn generate_jwt(&self) -> String {
         jwt::generate(self)
     }
 
@@ -82,26 +83,42 @@ impl NewUser {
         password: String,
         is_admin: bool,
     ) -> Result<User, diesel::result::Error> {
-        let hashed_password = match bcrypt::hash(&password, bcrypt::DEFAULT_COST) {
-            //hashiranje izdvojit kasnije
-            Ok(hashed) => hashed,
-            Err(e) => {
-                println!("Hashing password error: {:?}", e);
-                return Err(diesel::result::Error::__Nonexhaustive);
-            }
-        };
-        let new_user = Self {
-            //mislim da i ovo
-            first_name,
-            last_name,
-            email,
-            pass: String::to_string(&hashed_password),
-            is_admin,
-        };
+        let is_email_valid = crate::validation::validate_email(&email);
+        let is_pass_valid = crate::validation::validate_password(&password);
 
-        diesel::insert_into(users::table)
-            .values(&new_user)
-            .get_result(connection)
-        //.expect("Error adding new user")
+        if !is_email_valid || !is_pass_valid {
+            //return Err(ValidationError::new("Error validating user email"));        //napravit svoj error
+            println!(
+                "Error validating email: {} Please enter correct email ",
+                email
+            );
+            println!(
+                "Error validating password: {} Please enter correct pass ",
+                password
+            );
+            return Err(diesel::result::Error::__Nonexhaustive); //ne ovo koristit za error!!
+        } else {
+            let hashed_password = match bcrypt::hash(&password, bcrypt::DEFAULT_COST) {
+                //hashiranje izdvojit kasnije
+                Ok(hashed) => hashed,
+                Err(e) => {
+                    println!("Hashing password error: {:?}", e);
+                    return Err(diesel::result::Error::__Nonexhaustive);
+                }
+            };
+            let new_user = Self {
+                //mislim da i ovo
+                first_name,
+                last_name,
+                email,
+                pass: String::to_string(&hashed_password),
+                is_admin,
+            };
+
+            diesel::insert_into(users::table)
+                .values(&new_user)
+                .get_result(connection)
+            //.expect("Error adding new user")
+        }
     }
 }

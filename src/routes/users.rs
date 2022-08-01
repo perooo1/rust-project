@@ -4,6 +4,8 @@ use actix_web::{
     web::{self, Json},
     HttpRequest, HttpResponse, Responder,
 };
+//use crate::db_utils::AppState;
+
 
 pub async fn handle(db: web::Data<db_utils::DbPool>) -> impl Responder {
     let users = User::get_all_users(&db.get().unwrap());
@@ -12,6 +14,16 @@ pub async fn handle(db: web::Data<db_utils::DbPool>) -> impl Responder {
         Err(_) => HttpResponse::Ok().body("Error getting users"),
     }
 }
+
+/* 
+pub async fn handle(db: web::Data<AppState>) -> impl Responder {
+    let users = User::get_all_users(&db.get_connection());
+    match users {
+        Ok(users) => HttpResponse::Ok().json(users),
+        Err(_) => HttpResponse::Ok().body("Error getting users"),
+    }
+}
+*/
 
 pub async fn del_usr(db: web::Data<db_utils::DbPool>, path: web::Path<(String)>) -> impl Responder {
     let user_id = path.into_inner();

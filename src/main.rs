@@ -3,9 +3,11 @@ extern crate diesel;
 
 mod application;
 mod db_utils;
+mod errors;
 mod models;
 mod routes;
 mod schema;
+mod validation;
 
 use actix_web::{
     web::{self, Data},

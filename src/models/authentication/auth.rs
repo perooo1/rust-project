@@ -1,18 +1,10 @@
-use crate::{
-    errors::AuthError,
-    models::user::{self, User},
-    schema::users,
-};
+use crate::{errors::AuthError, models::user::User, schema::users};
 use diesel::{ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl};
 use serde::Deserialize;
-use std::{fmt, io::Error};
-use validator::{Validate, ValidationError};
 
-#[derive(Queryable, Debug, Deserialize, Validate)]
+#[derive(Queryable, Debug, Deserialize)]
 pub struct AuthUser {
-    //#[validate(email)]
     pub email: String,
-    //#[validate(length(min = 4), custom = "validate_user_password")]
     pub pass: String,
 }
 
@@ -22,28 +14,37 @@ impl AuthUser {
         email: String,
         password: String,
     ) -> Result<(User, String), AuthError> {
-        let user = match users::table
-            .filter(users::email.eq(&email))
-            .load::<User>(conn)
-        {
-            Ok(mut users) => match users.pop() {
-                Some(user) => user,
-                _ => {
-                    println!("Auth error: No user found with email: {}", &email);
+        let is_email_valid = crate::validation::validate_email(&email);
+        let is_pass_valid = crate::validation::validate_password(&password);
+
+        if !is_email_valid || !is_pass_valid {
+            println!(
+                "Auth Error validating email: {} or password {}",
+                email, password
+            );
+            return Err(AuthError);
+        } else {
+            let user = match users::table
+                .filter(users::email.eq(&email))
+                .load::<User>(conn)
+            {
+                Ok(mut users) => match users.pop() {
+                    Some(user) => user,
+                    _ => {
+                        println!("Auth error: No user found with email: {}", &email);
+                        return Err(AuthError);
+                    }
+                },
+                Err(e) => {
+                    println!("Authentication error: err getting user from db {:?}", e);
                     return Err(AuthError);
                 }
-            },
-            Err(e) => {
-                println!("Authentication error: err getting user from db {:?}", e);
-                return Err(AuthError);
-            }
-        };
+            };
 
-        AuthUser::verify_password(password, &user)?;
-
-        let token = user.generate_jwt();
-
-        Ok((user, token))
+            AuthUser::verify_password(password, &user)?;
+            let token = user.generate_jwt();
+            Ok((user, token))
+        }
     }
 
     fn verify_password(pwd: String, user: &User) -> Result<(), AuthError> {

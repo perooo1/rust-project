@@ -15,6 +15,6 @@ pub async fn handle(db: web::Data<db_utils::DbPool>, user: Json<NewUser>) -> imp
         user.is_admin,
     ) {
         Ok(created_user) => HttpResponse::Ok().json(created_user),
-        Err(_) => HttpResponse::Ok().body("Error creating new user"),
+        Err(_) => HttpResponse::BadRequest().body("Error creating new user"),
     }
 }

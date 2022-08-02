@@ -45,8 +45,40 @@ impl User {
         }
     }
 
-    pub fn update_user(conn: &PgConnection, usr: Self) {
-        todo!()
+    pub fn update_email(
+        self,
+        conn: &PgConnection,
+        email: String,
+    ) -> Result<(), diesel::result::Error> {
+        match diesel::update(users::table.find(self.id))
+            .set(users::email.eq(email))
+            .get_result::<User>(conn)
+        {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub fn update_password(
+        self,
+        conn: &PgConnection,
+        password: String,
+    ) -> Result<(), diesel::result::Error> {
+        let hash_password = match bcrypt::hash(&password, bcrypt::DEFAULT_COST) {
+            Ok(hashed) => hashed,
+            Err(e) => {
+                println!("Hashing password error: {:?}", e);
+                return Err(diesel::result::Error::__Nonexhaustive);
+            }
+        };
+
+        match diesel::update(users::table.find(self.id))
+            .set(users::pass.eq(hash_password))
+            .get_result::<User>(conn)
+        {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        }
     }
 
     pub fn delete_user(conn: &PgConnection, id: String) -> Result<usize, diesel::result::Error> {
@@ -88,14 +120,7 @@ impl NewUser {
 
         if !is_email_valid || !is_pass_valid {
             //return Err(ValidationError::new("Error validating user email"));        //napravit svoj error
-            println!(
-                "Error validating email: {} Please enter correct email ",
-                email
-            );
-            println!(
-                "Error validating password: {} Please enter correct pass ",
-                password
-            );
+            println!("Error validating email: {} or password {}", email, password);
             return Err(diesel::result::Error::__Nonexhaustive); //ne ovo koristit za error!!
         } else {
             let hashed_password = match bcrypt::hash(&password, bcrypt::DEFAULT_COST) {

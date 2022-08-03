@@ -1,8 +1,12 @@
 //validate user email and password
 
-use crate::errors;
+use crate::{errors, models::user::User};
+use diesel::PgConnection;
 use passwords::analyzer;
 use validator::{self, ValidationError};
+
+//////////////user validation section
+
 /*
 pub fn validate_email(email: &String) -> Result<(), ValidationError> {
     let is_email_valid = validator::validate_email(email);
@@ -15,7 +19,6 @@ pub fn validate_email(email: &String) -> Result<(), ValidationError> {
 }
 
 */
-
 pub fn validate_email(email: &String) -> bool {
     let email = email.trim();
     validator::validate_email(email)
@@ -38,8 +41,9 @@ pub fn validate_password(password: &String) -> bool {
     true
 }
 
-//validate title/ author/ publisher is empty
-
-pub fn is_book_author_empty(author: &String) -> bool{
-    author.is_empty()
+pub fn user_exists(conn: &PgConnection, id: &String) -> bool {
+    match User::get_user_by_id(conn, id) {
+        Ok(_) => true,
+        Err(_) => false,
+    }
 }

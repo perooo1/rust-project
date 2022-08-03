@@ -51,18 +51,3 @@ pub fn generate(user: &User) -> String {
     )
     .unwrap_or_default()
 }
-
-pub fn verify_token(token: String) -> Result<User, jsonwebtoken::errors::Error> {
-    let secret_key = match dotenv::var("JWT_SECRET_KEY") {
-        Ok(key) => key,
-        Err(_) => "".to_string(),
-    };
-
-    let token_data = jsonwebtoken::decode::<Claims>(
-        &token,
-        &jsonwebtoken::DecodingKey::from_secret(secret_key.as_bytes()),
-        &jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256),
-    )?;
-
-    Ok(User::create_user_from_jwt(&token_data.claims))
-}

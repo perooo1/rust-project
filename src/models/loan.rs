@@ -1,9 +1,13 @@
 use crate::schema::loans::{self};
+use crate::validation;
 use chrono::{NaiveDate, NaiveDateTime};
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
 
-#[derive(Queryable, PartialEq, Debug, Clone)]
+use super::book::Book;
+
+#[derive(Queryable, PartialEq, Debug, Clone, Serialize, Deserialize)]
 
 pub struct Loan {
     pub id: String,
@@ -16,14 +20,11 @@ pub struct Loan {
     pub updated_at: NaiveDateTime,
 }
 
-#[derive(Queryable, Insertable, Debug)]
+#[derive(Queryable, Insertable, Debug, Serialize, Deserialize)]
 #[table_name = "loans"]
 pub struct NewLoan {
     pub book_id: i32,
     pub user_id: String,
-    pub loan_date: NaiveDate,
-    pub return_deadline: NaiveDate,                 //postaviti na 14 dana nakon loan_date
-    pub is_returned: bool,
 }
 
 impl Loan {
@@ -43,24 +44,34 @@ impl Loan {
 
 impl NewLoan {
     pub fn create_loan(
-        connection: &PgConnection,
+        conn: &PgConnection,
         b_id: i32,
         u_id: String,
-        l_date: NaiveDate,
-        deadline: NaiveDate,
-        returned: bool,
     ) -> Result<Loan, diesel::result::Error> {
-        let new_loan = Self {
-            book_id: b_id,
-            user_id: u_id,
-            loan_date: l_date,
-            return_deadline: deadline,
-            is_returned: returned,
-        };
+        //check if user id is correct
+        //check if book id is correct, if correct, check if book is already loaned, else add book id to loan table and change loaned status in book
+        let user_exists = validation::user_validation::user_exists(conn, &u_id);
+        let book_exists = validation::book_validation::book_exists(conn, &b_id);
 
-        diesel::insert_into(loans::table)
-            .values(&new_loan)
-            .get_result(connection)
-            //.expect("Error creating a new loan")
+        if !user_exists || !book_exists {
+            println!("User or book with provided id doesn't exist in databse!");
+            return Err(diesel::result::Error::NotFound); //ne ovo koristit za error!!
+        } else {
+            if validation::book_validation::is_book_already_loaned(conn, &b_id) {
+                println!("Book is already loaned!");
+                return Err(diesel::result::Error::__Nonexhaustive); //ne ovo koristit za error!!
+            } else {
+                Book::update_loan_status(conn, &b_id);
+
+                let new_loan = Self {
+                    book_id: b_id,
+                    user_id: u_id,
+                };
+
+                diesel::insert_into(loans::table)
+                    .values(&new_loan)
+                    .get_result(conn)
+            }
+        }
     }
 }

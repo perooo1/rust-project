@@ -17,6 +17,7 @@ pub struct User {
     pub is_admin: bool,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    pub is_deleted: bool,
 }
 
 #[derive(Insertable, Debug, Deserialize)]
@@ -37,7 +38,7 @@ impl User {
 
     pub fn get_user_by_id(
         conn: &PgConnection,
-        id: String,
+        id: &String,
     ) -> Result<Option<User>, diesel::result::Error> {
         match users::table.filter(users::id.eq(id)).load::<User>(conn) {
             Ok(mut users) => Ok(users.pop()),
@@ -90,18 +91,6 @@ impl User {
         jwt::generate(self)
     }
 
-    pub fn create_user_from_jwt(claims: &authentication::jwt::Claims) -> Self {
-        User {
-            id: String::from(&claims.sub),
-            first_name: String::from(&claims.first_name),
-            last_name: String::from(&claims.last_name),
-            email: String::from(&claims.email),
-            pass: String::from(&claims.email),
-            is_admin: claims.is_admin,
-            created_at: claims.created_at,
-            updated_at: claims.updated_at,
-        }
-    }
 }
 
 impl NewUser {
@@ -115,13 +104,12 @@ impl NewUser {
         password: String,
         is_admin: bool,
     ) -> Result<User, diesel::result::Error> {
-        let is_email_valid = crate::validation::validate_email(&email);
-        let is_pass_valid = crate::validation::validate_password(&password);
+        let is_email_valid = crate::validation::user_validation::validate_email(&email);
+        let is_pass_valid = crate::validation::user_validation::validate_password(&password);
 
         if !is_email_valid || !is_pass_valid {
-            //return Err(ValidationError::new("Error validating user email"));        //napravit svoj error
             println!("Error validating email: {} or password {}", email, password);
-            return Err(diesel::result::Error::__Nonexhaustive); //ne ovo koristit za error!!
+            return Err(diesel::result::Error::__Nonexhaustive); //ne ovo koristit za error, napisat svoj!!
         } else {
             let hashed_password = match bcrypt::hash(&password, bcrypt::DEFAULT_COST) {
                 //hashiranje izdvojit kasnije
@@ -143,7 +131,6 @@ impl NewUser {
             diesel::insert_into(users::table)
                 .values(&new_user)
                 .get_result(connection)
-            //.expect("Error adding new user")
         }
     }
 }

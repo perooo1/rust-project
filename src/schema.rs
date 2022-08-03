@@ -35,6 +35,7 @@ table! {
         is_admin -> Bool,
         created_at -> Timestamp,
         updated_at -> Timestamp,
+        is_deleted -> Bool,
     }
 }
 

@@ -14,8 +14,8 @@ impl AuthUser {
         email: String,
         password: String,
     ) -> Result<(User, String), AuthError> {
-        let is_email_valid = crate::validation::validate_email(&email);
-        let is_pass_valid = crate::validation::validate_password(&password);
+        let is_email_valid = crate::validation::user_validation::validate_email(&email);
+        let is_pass_valid = crate::validation::user_validation::validate_password(&password);
 
         if !is_email_valid || !is_pass_valid {
             println!(

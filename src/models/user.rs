@@ -90,7 +90,6 @@ impl User {
     pub fn generate_jwt(&self) -> String {
         jwt::generate(self)
     }
-
 }
 
 impl NewUser {

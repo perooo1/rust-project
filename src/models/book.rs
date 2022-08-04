@@ -41,9 +41,7 @@ impl Book {
     }
 
     pub fn update_loan_status(conn: &PgConnection, id: &i32) {
-        //mozda vratiti neki result ili option
-
-        let mut book = match Book::get_book_by_id(conn, id) {
+        let book = match Book::get_book_by_id(conn, id) {
             Ok(book) => book,
             Err(e) => {
                 println!("book finding by id error {:?}", e.to_string());
@@ -51,7 +49,29 @@ impl Book {
             }
         };
 
-        book.is_loaned = !book.is_loaned; //ne ovako nego treba napisati diesel query da izmjeni u bazi!!
+        if book.is_loaned == true {
+            match diesel::update(books::table.find(id))
+                .set(books::is_loaned.eq(false))
+                .execute(conn)
+            {
+                Ok(num_affected) => println!("Update loan status affected {} rows", num_affected),
+                Err(_) => {
+                    println!("Error updating loan status to false");
+                    return;
+                }
+            }
+        } else {
+            match diesel::update(books::table.find(id))
+                .set(books::is_loaned.eq(true))
+                .execute(conn)
+            {
+                Ok(num_affected) => println!("Update loan status affected {} rows", num_affected),
+                Err(_) => {
+                    println!("Error updating loan status to false");
+                    return;
+                }
+            }
+        }
     }
 }
 

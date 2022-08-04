@@ -23,7 +23,7 @@ pub fn book_exists(conn: &PgConnection, id: &i32) -> bool {
     }
 }
 
-pub fn is_book_already_loaned(conn: &PgConnection, id: &i32) -> bool {
+pub fn is_book_loaned(conn: &PgConnection, id: &i32) -> bool {
     let book = match Book::get_book_by_id(conn, id) {
         Ok(book) => book,
         Err(e) => {

@@ -3,6 +3,7 @@ use diesel::prelude::*;
 use diesel::{PgConnection, QueryDsl, RunQueryDsl};
 use serde::{Deserialize, Serialize};
 
+use crate::custom_errors::app_error::AppError;
 use crate::schema::books::{self};
 use crate::validation;
 
@@ -26,26 +27,29 @@ pub struct SearchableBook {
 }
 
 impl Book {
-    pub fn get_all_books(conn: &PgConnection) -> Result<Vec<Book>, diesel::result::Error> {
-        books::table.limit(5).load::<Self>(conn) //remove limit, just for testing / should probably be paginated
+    pub fn get_all_books(conn: &PgConnection) -> Result<Vec<Book>, AppError> {
+        books::table
+            .limit(5)
+            .load::<Self>(conn)
+            .map_err(|_| AppError::InternalError) //remove limit, just for testing
     }
 
-    pub fn get_book_by_id(conn: &PgConnection, id: &i32) -> Result<Book, diesel::result::Error> {
+    pub fn get_book_by_id(conn: &PgConnection, id: &i32) -> Result<Book, AppError> {
         match books::table.filter(books::id.eq(id)).load::<Book>(conn) {
             Ok(mut books) => Ok(match books.pop() {
                 Some(book) => book,
-                None => return Err(diesel::result::Error::NotFound),
+                None => return Err(AppError::NotFound),
             }),
-            Err(e) => Err(e),
+            Err(_) => Err(AppError::InternalError),
         }
     }
 
-    pub fn update_loan_status(conn: &PgConnection, id: &i32) {
+    pub fn update_loan_status(conn: &PgConnection, id: &i32) -> Result<bool, AppError> {
         let book = match Book::get_book_by_id(conn, id) {
             Ok(book) => book,
             Err(e) => {
                 println!("book finding by id error {:?}", e.to_string());
-                return;
+                return Err(AppError::NotFound);
             }
         };
 
@@ -54,10 +58,18 @@ impl Book {
                 .set(books::is_loaned.eq(false))
                 .execute(conn)
             {
-                Ok(num_affected) => println!("Update loan status affected {} rows", num_affected),
+                Ok(num_affected) => {
+                    println!("Update loan status affected {} rows", num_affected);
+
+                    if num_affected == 0 {
+                        Err(AppError::NotFound)
+                    } else {
+                        Ok(true)
+                    }
+                }
                 Err(_) => {
                     println!("Error updating loan status to false");
-                    return;
+                    Err(AppError::InternalError)
                 }
             }
         } else {
@@ -65,10 +77,18 @@ impl Book {
                 .set(books::is_loaned.eq(true))
                 .execute(conn)
             {
-                Ok(num_affected) => println!("Update loan status affected {} rows", num_affected),
+                Ok(num_affected) => {
+                    println!("Update loan status affected {} rows", num_affected);
+
+                    if num_affected == 0 {
+                        Err(AppError::NotFound)
+                    } else {
+                        Ok(true)
+                    }
+                }
                 Err(_) => {
                     println!("Error updating loan status to false");
-                    return;
+                    Err(AppError::InternalError)
                 }
             }
         }
@@ -79,11 +99,11 @@ impl SearchableBook {
     pub fn search_book_by_title(
         conn: &PgConnection,
         book: SearchableBook,
-    ) -> Result<Vec<Book>, diesel::result::Error> {
+    ) -> Result<Vec<Book>, AppError> {
         let is_title_empty = validation::book_validation::is_book_title_empty(&book.title);
 
         if is_title_empty {
-            return Err(diesel::result::Error::__Nonexhaustive);
+            return Err(AppError::BadRequest);
         } else {
             match diesel::QueryDsl::filter(
                 books::table,
@@ -92,7 +112,7 @@ impl SearchableBook {
             .load::<Book>(conn)
             {
                 Ok(books) => Ok(books),
-                Err(e) => Err(e),
+                Err(_) => Err(AppError::InternalError),
             }
         }
     }
@@ -100,11 +120,11 @@ impl SearchableBook {
     pub fn search_book_by_author(
         conn: &PgConnection,
         book: SearchableBook,
-    ) -> Result<Vec<Book>, diesel::result::Error> {
+    ) -> Result<Vec<Book>, AppError> {
         let is_author_empty = validation::book_validation::is_book_author_empty(&book.authors);
 
         if is_author_empty {
-            return Err(diesel::result::Error::__Nonexhaustive);
+            return Err(AppError::BadRequest);
         } else {
             match diesel::QueryDsl::filter(
                 books::table,
@@ -113,7 +133,7 @@ impl SearchableBook {
             .load::<Book>(conn)
             {
                 Ok(books) => Ok(books),
-                Err(e) => Err(e),
+                Err(_) => Err(AppError::InternalError),
             }
         }
     }
@@ -121,12 +141,12 @@ impl SearchableBook {
     pub fn search_book_by_publisher(
         conn: &PgConnection,
         book: SearchableBook,
-    ) -> Result<Vec<Book>, diesel::result::Error> {
+    ) -> Result<Vec<Book>, AppError> {
         let is_publisher_empty =
             validation::book_validation::is_book_publisher_empty(&book.publisher);
 
         if is_publisher_empty {
-            return Err(diesel::result::Error::__Nonexhaustive);
+            return Err(AppError::BadRequest);
         } else {
             match diesel::QueryDsl::filter(
                 books::table,
@@ -135,7 +155,7 @@ impl SearchableBook {
             .load::<Book>(conn)
             {
                 Ok(books) => Ok(books),
-                Err(e) => Err(e),
+                Err(_) => Err(AppError::InternalError),
             }
         }
     }

@@ -1,5 +1,3 @@
-//validate title/ author/ publisher is empty
-
 use diesel::PgConnection;
 
 use crate::models::book::Book;

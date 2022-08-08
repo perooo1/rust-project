@@ -2,7 +2,7 @@ use crate::db_utils;
 use crate::models::user::NewUser;
 use actix_web::{
     web::{self, Json},
-    HttpRequest, HttpResponse, Responder,
+    HttpRequest, HttpResponse, Responder, ResponseError,
 };
 
 pub async fn handle(db: web::Data<db_utils::DbPool>, user: Json<NewUser>) -> impl Responder {
@@ -15,6 +15,6 @@ pub async fn handle(db: web::Data<db_utils::DbPool>, user: Json<NewUser>) -> imp
         user.is_admin,
     ) {
         Ok(created_user) => HttpResponse::Ok().json(created_user),
-        Err(_) => HttpResponse::BadRequest().body("Error creating new user"),
+        Err(e) => e.error_response(),
     }
 }

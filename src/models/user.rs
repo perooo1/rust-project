@@ -1,3 +1,4 @@
+use crate::custom_errors::app_error::AppError;
 use crate::schema::users::{self};
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
@@ -32,59 +33,39 @@ pub struct NewUser {
 
 //TODO functions to get from databes ex get all, get by id...
 impl User {
-    pub fn get_all_users(conn: &PgConnection) -> Result<Vec<Self>, diesel::result::Error> {
-        users::table.load::<Self>(conn)
+    pub fn get_all_users(conn: &PgConnection) -> Result<Vec<Self>, AppError> {
+        users::table
+            .load::<Self>(conn)
+            .map_err(|_| AppError::InternalError)
     }
 
-    pub fn get_user_by_id(
-        conn: &PgConnection,
-        id: &String,
-    ) -> Result<Option<User>, diesel::result::Error> {
+    pub fn get_user_by_id(conn: &PgConnection, id: &String) -> Result<Option<User>, AppError> {
         match users::table.filter(users::id.eq(id)).load::<User>(conn) {
             Ok(mut users) => Ok(users.pop()),
-            Err(e) => Err(e),
-        }
-    }
-
-    pub fn update_email(
-        self,
-        conn: &PgConnection,
-        email: String,
-    ) -> Result<(), diesel::result::Error> {
-        match diesel::update(users::table.find(self.id))
-            .set(users::email.eq(email))
-            .get_result::<User>(conn)
-        {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e),
-        }
-    }
-
-    pub fn update_password(
-        self,
-        conn: &PgConnection,
-        password: String,
-    ) -> Result<(), diesel::result::Error> {
-        let hash_password = match bcrypt::hash(&password, bcrypt::DEFAULT_COST) {
-            Ok(hashed) => hashed,
             Err(e) => {
-                println!("Hashing password error: {:?}", e);
-                return Err(diesel::result::Error::__Nonexhaustive);
+                println!("{}", e.to_string());
+                Err(AppError::NotFound)
             }
-        };
-
-        match diesel::update(users::table.find(self.id))
-            .set(users::pass.eq(hash_password))
-            .get_result::<User>(conn)
-        {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e),
         }
     }
 
-    pub fn delete_user(conn: &PgConnection, id: String) -> Result<usize, diesel::result::Error> {
-        let count_deleted = delete(users::table.filter(users::id.eq(id))).execute(conn);
-        count_deleted
+    pub fn delete_user(conn: &PgConnection, id: String) -> Result<usize, AppError> {
+        match diesel::update(users::table.find(id))
+            .set(users::is_deleted.eq(true))
+            .execute(conn)
+        {
+            Ok(count_deleted) => {
+                if count_deleted == 0 {
+                    return Err(AppError::NotFound);
+                }
+                println!("Update user deletion deleted {} rows", count_deleted);
+                Ok(count_deleted)
+            }
+            Err(_) => {
+                println!("Error setting user deleted to false");
+                Err(AppError::InternalError)
+            }
+        }
     }
 
     pub fn generate_jwt(&self) -> String {
@@ -102,24 +83,22 @@ impl NewUser {
         email: String,
         password: String,
         is_admin: bool,
-    ) -> Result<User, diesel::result::Error> {
+    ) -> Result<User, AppError> {
         let is_email_valid = crate::validation::user_validation::validate_email(&email);
         let is_pass_valid = crate::validation::user_validation::validate_password(&password);
 
         if !is_email_valid || !is_pass_valid {
             println!("Error validating email: {} or password {}", email, password);
-            return Err(diesel::result::Error::__Nonexhaustive); //ne ovo koristit za error, napisat svoj!!
+            return Err(AppError::InvalidCredentials);
         } else {
             let hashed_password = match bcrypt::hash(&password, bcrypt::DEFAULT_COST) {
-                //hashiranje izdvojit kasnije
                 Ok(hashed) => hashed,
                 Err(e) => {
                     println!("Hashing password error: {:?}", e);
-                    return Err(diesel::result::Error::__Nonexhaustive);
+                    return Err(AppError::PasswordHashError);
                 }
             };
             let new_user = Self {
-                //mislim da i ovo
                 first_name,
                 last_name,
                 email,
@@ -130,6 +109,7 @@ impl NewUser {
             diesel::insert_into(users::table)
                 .values(&new_user)
                 .get_result(connection)
+                .map_err(|_| AppError::UserCreationError)
         }
     }
 }

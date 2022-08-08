@@ -1,4 +1,4 @@
-use crate::{errors::AuthError, models::user::User, schema::users};
+use crate::{custom_errors::app_error::AppError, models::user::User, schema::users};
 use diesel::{ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl};
 use serde::Deserialize;
 
@@ -13,7 +13,7 @@ impl AuthUser {
         conn: &PgConnection,
         email: String,
         password: String,
-    ) -> Result<(User, String), AuthError> {
+    ) -> Result<(User, String), AppError> {
         let is_email_valid = crate::validation::user_validation::validate_email(&email);
         let is_pass_valid = crate::validation::user_validation::validate_password(&password);
 
@@ -22,7 +22,7 @@ impl AuthUser {
                 "Auth Error validating email: {} or password {}",
                 email, password
             );
-            return Err(AuthError);
+            return Err(AppError::InvalidCredentials);
         } else {
             let user = match users::table
                 .filter(users::email.eq(&email))
@@ -32,12 +32,12 @@ impl AuthUser {
                     Some(user) => user,
                     _ => {
                         println!("Auth error: No user found with email: {}", &email);
-                        return Err(AuthError);
+                        return Err(AppError::NotFound);
                     }
                 },
                 Err(e) => {
                     println!("Authentication error: err getting user from db {:?}", e);
-                    return Err(AuthError);
+                    return Err(AppError::InternalError);
                 }
             };
 
@@ -47,14 +47,14 @@ impl AuthUser {
         }
     }
 
-    fn verify_password(pwd: String, user: &User) -> Result<(), AuthError> {
+    fn verify_password(pwd: String, user: &User) -> Result<(), AppError> {
         match bcrypt::verify(&pwd, &user.pass) {
             Ok(does_match) => {
                 if does_match == true {
                     Ok(())
                 } else {
                     println!("Auth error for bcrypt verification for : {}", &user.email);
-                    Err(AuthError)
+                    Err(AppError::PasswordHashError)
                 }
             }
             Err(e) => {
@@ -62,7 +62,7 @@ impl AuthUser {
                     "Auth error for bcrypt verification for : {}, error msg: {}",
                     &user.email, e
                 );
-                Err(AuthError)
+                Err(AppError::PasswordHashError)
             }
         }
     }

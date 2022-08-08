@@ -1,24 +1,8 @@
-//validate user email and password
-
-use crate::{errors, models::user::User};
+use crate::{custom_errors, models::user::User};
 use diesel::PgConnection;
 use passwords::analyzer;
 use validator::{self, ValidationError};
 
-//////////////user validation section
-
-/*
-pub fn validate_email(email: &String) -> Result<(), ValidationError> {
-    let is_email_valid = validator::validate_email(email);
-
-    if !is_email_valid {
-        return Err(ValidationError::new("Error validating user email"));
-    }
-    Ok(())
-
-}
-
-*/
 pub fn validate_email(email: &String) -> bool {
     let email = email.trim();
     validator::validate_email(email)

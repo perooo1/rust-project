@@ -1,8 +1,7 @@
 use crate::db_utils;
 use crate::models::user::NewUser;
 use actix_web::{
-    web::{self, Json},
-    HttpRequest, HttpResponse, Responder, ResponseError,
+    web::{self, Json}, HttpResponse, Responder, ResponseError,
 };
 
 pub async fn handle(db: web::Data<db_utils::DbPool>, user: Json<NewUser>) -> impl Responder {

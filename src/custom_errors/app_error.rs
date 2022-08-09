@@ -2,8 +2,6 @@ use actix_web::http::header::ContentType;
 use actix_web::http::StatusCode;
 use actix_web::{HttpResponse, ResponseError};
 use derive_more::{Display, Error};
-use std::fmt::{self, Display};
-
 
 #[derive(Debug, Display, Error)]
 pub enum AppError {
@@ -65,11 +63,11 @@ impl From<diesel::result::Error> for AppError {
     }
 }
 
-impl From<bcrypt::BcryptError> for AppError{
+impl From<bcrypt::BcryptError> for AppError {
     fn from(err: bcrypt::BcryptError) -> Self {
-        match err{
+        match err {
             bcrypt::BcryptError::Io(_) => AppError::PasswordHashError,
-            bcrypt::BcryptError::CostNotAllowed(_) =>AppError::PasswordHashError,
+            bcrypt::BcryptError::CostNotAllowed(_) => AppError::PasswordHashError,
             bcrypt::BcryptError::InvalidCost(_) => AppError::PasswordHashError,
             bcrypt::BcryptError::InvalidPrefix(_) => AppError::PasswordHashError,
             bcrypt::BcryptError::InvalidHash(_) => AppError::PasswordHashError,

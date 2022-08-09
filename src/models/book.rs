@@ -4,7 +4,7 @@ use diesel::{PgConnection, QueryDsl, RunQueryDsl};
 use serde::{Deserialize, Serialize};
 
 use crate::custom_errors::app_error::AppError;
-use crate::schema::books::{self};
+use crate::schema::books;
 use crate::validation;
 
 #[derive(Queryable, PartialEq, Debug, Clone, Serialize)]

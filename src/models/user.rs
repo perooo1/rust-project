@@ -1,10 +1,9 @@
 use crate::custom_errors::app_error::AppError;
-use crate::schema::users::{self};
+use crate::schema::users;
 use chrono::NaiveDateTime;
+use diesel::pg::PgConnection;
 use diesel::prelude::*;
-use diesel::{delete, pg::PgConnection};
 use serde::{Deserialize, Serialize};
-use validator::ValidationError;
 
 use super::authentication::{self, jwt};
 
@@ -31,7 +30,6 @@ pub struct NewUser {
     pub is_admin: bool,
 }
 
-//TODO functions to get from databes ex get all, get by id...
 impl User {
     pub fn get_all_users(conn: &PgConnection) -> Result<Vec<Self>, AppError> {
         users::table
@@ -74,8 +72,6 @@ impl User {
 }
 
 impl NewUser {
-    //TODO functions for adding user to a database and associeted functions
-
     pub fn create_user(
         connection: &PgConnection,
         first_name: String,

@@ -3,6 +3,7 @@ use actix_web::http::StatusCode;
 use actix_web::{HttpResponse, ResponseError};
 use derive_more::{Display, Error};
 
+///Custom error type used for error handling throughout application
 #[derive(Debug, Display, Error)]
 pub enum AppError {
     #[display(fmt = "User/Loan/Book not found in database")]

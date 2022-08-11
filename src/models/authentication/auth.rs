@@ -1,14 +1,21 @@
 use crate::{custom_errors::app_error::AppError, models::user::User, schema::users};
 use diesel::{ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Queryable, Debug, Deserialize)]
+///Struct used for user authentication purposes
+#[derive(Queryable, Debug, Deserialize, Serialize)]
 pub struct AuthUser {
     pub email: String,
     pub pass: String,
 }
 
 impl AuthUser {
+    ///Function used to authenticate user if registered
+    /// # Returns
+    /// ## Ok
+    /// - Touple of (registered) user struct and generated jwt token: (user: [User], token: [String])
+    /// ## Error
+    /// - error: [AppError]
     pub fn authenticate(
         conn: &PgConnection,
         email: String,

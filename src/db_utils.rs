@@ -7,6 +7,7 @@ use std::env;
 
 pub type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
+///Function for establishing a single connection to postgres database
 pub fn establish_connection() -> PgConnection {
     dotenv().ok();
 
@@ -14,6 +15,7 @@ pub fn establish_connection() -> PgConnection {
     PgConnection::establish(&database_url).expect(&format!("Error connecting to {}", database_url))
 }
 
+///Function for establishing pooled connection to postgres database. DATABASE_URL is read from .env file
 pub fn establish_pool_connection() -> DbPool {
     dotenv().ok();
 

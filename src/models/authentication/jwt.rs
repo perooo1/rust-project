@@ -3,6 +3,8 @@ use chrono::{NaiveDateTime, Utc};
 use jsonwebtoken::EncodingKey;
 use serde::{Deserialize, Serialize};
 
+///Struct representing jwt claims used for embedding user info into token.
+/// All user fields are embedded - stateless jwt
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Claims {
     pub sub: String, //subject - represents user tj. his id
@@ -17,6 +19,7 @@ pub struct Claims {
     pub iat: i64, //issued at time
 }
 
+///Function for generating jwt token from a given [User] struct
 pub fn generate(user: &User) -> String {
     let secret_key = match dotenv::var("JWT_SECRET_KEY") {
         Ok(key) => key,

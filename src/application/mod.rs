@@ -5,6 +5,7 @@ use actix_web::{
 
 use crate::{db_utils, routes};
 
+///Function for setting up HttpServer and it's services
 pub async fn setup_web_server() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()

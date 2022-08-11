@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use super::book::Book;
 
+///Struct representing a loan in postgres database
 #[derive(Queryable, PartialEq, Debug, Clone, Serialize, Deserialize)]
 
 pub struct Loan {
@@ -21,6 +22,7 @@ pub struct Loan {
     pub updated_at: NaiveDateTime,
 }
 
+///Struct used for creating a new loan in postgres database
 #[derive(Queryable, Insertable, Debug, Serialize, Deserialize)]
 #[table_name = "loans"]
 pub struct NewLoan {
@@ -29,12 +31,26 @@ pub struct NewLoan {
 }
 
 impl Loan {
+    ///Function for returning all loans from postgres database
+    /// # Returns
+    /// ## Ok
+    /// - Vector of loans in database: Vec<[Loan]>
+    /// ## Error
+    /// - error: [AppError]
+    /// - Internal server error
     pub fn get_all_loans(conn: &PgConnection) -> Result<Vec<Self>, AppError> {
         loans::table
             .load::<Self>(conn)
             .map_err(|_| AppError::InternalError)
     }
-
+    ///Function for getting a loan with matching id from postgres database
+    /// # Returns
+    /// ## Ok
+    /// - Loan in database: loan: [Loan]
+    /// ## Error
+    /// - error: [AppError]
+    /// - Internal server error
+    /// - Not Found error
     pub fn get_loan_by_id(conn: &PgConnection, loan_id: &String) -> Result<Option<Loan>, AppError> {
         match loans::table
             .filter(loans::id.eq(loan_id))
@@ -45,6 +61,17 @@ impl Loan {
         }
     }
 
+    ///Function for returning a loan
+    /// # Returns
+    /// ## Ok
+    /// - ()
+    /// ## Error
+    /// - error: [AppError]
+    /// - Internal server error
+    /// - Not Found error
+    /// - Loan Already returned error
+    /// - Book Loan status error
+    /// - Bad Request
     pub fn return_loan(conn: &PgConnection, id: String) -> Result<(), AppError> {
         match validation::loan_validation::check_if_already_returned(conn, &id) {
             Ok(result) => match result {
@@ -94,6 +121,15 @@ impl Loan {
         }
     }
 
+    ///Function for checking whether a loan has been returned or not
+    /// # Returns
+    /// ## Ok
+    /// - String with a status message: message: [String]
+    /// ## Error
+    /// - error: [AppError]
+    /// - Internal server error
+    /// - Not Found error
+    /// - Loan Returned error
     pub fn check_status(conn: &PgConnection, loan_id: String) -> Result<String, AppError> {
         match validation::loan_validation::check_if_already_returned(conn, &loan_id) {
             Ok(result) => match result {
@@ -128,7 +164,14 @@ impl Loan {
             }
         }
     }
-
+    ///Function for returning all loans from a single user
+    /// # Returns
+    /// ## Ok
+    /// - Loan in database: loan: [Loan]
+    /// ## Error
+    /// - error: [AppError]
+    /// - Internal server error
+    /// - Not Found error
     pub fn get_loans_for_single_user(
         conn: &PgConnection,
         user_id: String,
@@ -152,6 +195,17 @@ impl Loan {
 }
 
 impl NewLoan {
+    ///Function for creating a loan in postgres database
+    /// # Returns
+    /// ## Ok
+    /// - Loan in database: loan: [Loan]
+    /// ## Error
+    /// - error: [AppError]
+    /// - Internal server error
+    /// - Not Found error
+    /// - Book Loaned error
+    /// - Book Loaned status error
+    /// - Bad Request
     pub fn create_loan(conn: &PgConnection, b_id: i32, u_id: String) -> Result<Loan, AppError> {
         let user_exists = validation::user_validation::user_exists(conn, &u_id);
         let book_exists = validation::book_validation::book_exists(conn, &b_id);

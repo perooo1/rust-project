@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use super::authentication::{self, jwt};
 
+///Struct representing a user in postgres databse
 #[derive(Queryable, PartialEq, Debug, Clone, Serialize)]
 pub struct User {
     pub id: String,
@@ -20,7 +21,8 @@ pub struct User {
     pub is_deleted: bool,
 }
 
-#[derive(Insertable, Debug, Deserialize)]
+///Struct used for creating a new user in postgres database
+#[derive(Insertable, Debug, Serialize, Deserialize)]
 #[table_name = "users"]
 pub struct NewUser {
     pub first_name: String,
@@ -31,12 +33,26 @@ pub struct NewUser {
 }
 
 impl User {
+    ///Function for returning all users from postgres database
+    /// # Returns
+    /// ## Ok
+    /// - Vector of registered users in database: Vec<[User]>
+    /// ## Error
+    /// - error: [AppError]
+    /// - Internal server error
     pub fn get_all_users(conn: &PgConnection) -> Result<Vec<Self>, AppError> {
         users::table
             .load::<Self>(conn)
             .map_err(|_| AppError::InternalError)
     }
-
+    ///Function for getting a user with matching id from postgres database
+    /// # Returns
+    /// ## Ok
+    /// - User in database: user: [User]
+    /// ## Error
+    /// - error: [AppError]
+    /// - Internal server error
+    /// - Not Found error
     pub fn get_user_by_id(conn: &PgConnection, id: &String) -> Result<Option<User>, AppError> {
         match users::table.filter(users::id.eq(id)).load::<User>(conn) {
             Ok(mut users) => Ok(users.pop()),
@@ -46,7 +62,14 @@ impl User {
             }
         }
     }
-
+    ///Function for deleting an user with matching id from postgres database
+    /// # Returns
+    /// ## Ok
+    /// - Number of rows affected: count_deleted: [usize]
+    /// ## Error
+    /// - error: [AppError]
+    /// - Internal server error
+    /// - Not Found error
     pub fn delete_user(conn: &PgConnection, id: String) -> Result<usize, AppError> {
         match diesel::update(users::table.find(id))
             .set(users::is_deleted.eq(true))
@@ -65,13 +88,23 @@ impl User {
             }
         }
     }
-
+    ///Function used for generating a jwt token for user
     pub fn generate_jwt(&self) -> String {
         jwt::generate(self)
     }
 }
 
 impl NewUser {
+    ///Function for creating a new user in postgres database
+    /// # Returns
+    /// ## Ok
+    /// - user: [User]
+    /// ## Error
+    /// - error: [AppError]
+    /// - User Creation error
+    /// - Invalid credentials error
+    /// - Password hash error
+    /// - Internal server error
     pub fn create_user(
         connection: &PgConnection,
         first_name: String,
